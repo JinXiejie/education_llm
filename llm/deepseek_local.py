@@ -38,7 +38,7 @@ def func(messages, model, api_url):
     "messages":messages,
     "stream": True  # 开启流式输出
     }
-    response = requests.post(API_URL, headers=headers, json=data, stream=True)
+    response = requests.post(api_url, headers=headers, json=data, stream=True)
     answer = ""
     for line in response.iter_lines():
         if line:
@@ -59,8 +59,9 @@ messages = [{
         "content": "大语言模型。"
     }]
 # 定义想要调用的函数（默认DeepSeek）
-model='deepseek-r1:1.5b'
-api_url = "http://127.0.0.1:11434/api/generate"
+model='deepseek-r1:8b'
+# api_url = "http://127.0.0.1:11434/api/generate"
+api_url = "http://127.0.0.1:11434/api/chat"
 
 # 调用函数
 while True:
