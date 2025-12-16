@@ -1,0 +1,6 @@
+
+
+安装llama-index
+pip install llama-index-core -i https://pypi.tuna.tsinghua.edu.cn/simple
+安装llama-index内置ollama
+pip install llama-index-llms-ollama -i https://pypi.tuna.tsinghua.edu.cn/simple

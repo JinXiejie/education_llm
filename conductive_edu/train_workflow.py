@@ -37,5 +37,5 @@ def embed_completion():
 
 
 if __name__ == "__main__":
-    # chat_completion()
-    embed_completion()
+    chat_completion()
+    # embed_completion()

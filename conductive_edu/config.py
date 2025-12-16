@@ -1,7 +1,7 @@
 
 class Config:
-    DEEPSEEK_R1_MODEL='deepseek-r1:8b'
-    # DEEPSEEK_R1_MODEL='deepseek-r1:1.5b'
+    # DEEPSEEK_R1_MODEL='deepseek-r1:8b'
+    DEEPSEEK_R1_MODEL='deepseek-r1:1.5b'
     # GENERATE_URL = "http://127.0.0.1:11434/api/generate"
     # CHAT_URL = "http://127.0.0.1:11434/api/chat"
     BASE_URL = "http://127.0.0.1:11434/api/"
