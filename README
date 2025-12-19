@@ -1,6 +1,10 @@
 
 
 安装llama-index
-pip install llama-index-core -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install llama-index-core==0.14.10 -i https://pypi.tuna.tsinghua.edu.cn/simple
 安装llama-index内置ollama
-pip install llama-index-llms-ollama -i https://pypi.tuna.tsinghua.edu.cn/simple
+pip install llama-index-llms-ollama==0.6.1 -i https://pypi.tuna.tsinghua.edu.cn/simple
+
+hugging face 相关依赖
+安装 sentence-transformers
+pip install sentence-transformers===5.2.0 -i https://pypi.tuna.tsinghua.edu.cn/simple

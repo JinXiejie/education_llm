@@ -2,14 +2,18 @@ import requests
 import json
 
 from conductive_edu.config import Config
-
+from langchain_community.document_loaders import PyPDFLoader
+from langchain_community.vectorstores import Chroma
+from langchain_text_splitters import RecursiveCharacterTextSplitter
+from langchain_huggingface import HuggingFaceEmbeddings
+from hf_xet import force_sigint_shutdown
+import numpy as np
 
 class Agent(object):
     def __init__(self, agent_type="user", device=None, logger=None, monitor=None):
         # 定义想要调用的函数（默认DeepSeek）
-        self.model = Config.DEEPSEEK_R1_MODEL
-        # self.model = Config.DEEPSEEK_R1_1B
-        self.api_url = Config.BASE_URL
+        self.model_name = Config.DEEPSEEK_R1_MODEL_LIST[1]
+        self.base_url = Config.BASE_URL
 
     """
         API:/generate
@@ -23,14 +27,13 @@ class Agent(object):
         :param system: 可选 覆盖模型系统信息的字段，影响生成文本的风格
         :param temperature: 可选，控制文本生成的随机性 默认值为1
     """
-    def generate_stream(self, question, agent_type='generate'):
-        model = self.model
-        api_url = self.api_url + agent_type
+    def generate_stream(self, question, agent_type='api/generate'):
+        api_url = self.base_url + agent_type
         headers = {
             "Content-Type": "application/json"
         }
         data = {
-            "model": model,
+            "model": self.model_name,
             "prompt": question,
             "stream": True  # 开启流式输出
         }
@@ -51,15 +54,14 @@ class Agent(object):
         :param content：消息内容
         :param stream: 可选,是否流式传输响应,默认true
     """
-    def chat_stream(self, messages, agent_type='chat'):
-        model = self.model
-        api_url = self.api_url + agent_type
+    def chat_stream(self, messages, agent_type='api/chat'):
+        api_url = self.base_url + agent_type
         think_over = False
         headers = {
             "Content-Type": "application/json"
         }
         data = {
-            "model": model,
+            "model": self.model_name,
             "messages": messages,
             "stream": True  # 开启流式输出
         }
@@ -93,14 +95,51 @@ class Agent(object):
         :param truncate: 可选,是否在文本超出上下文长度时进行截断，默认true
         :param stream: 可选,是否流式传输响应，默认为true
     """
-    def embed_stream(self, text, agent_type='embed'):
-        model = self.model
-        api_url = self.api_url + agent_type
+    def embed_stream(self, text, agent_type='api/embed'):
+        api_url = self.base_url + agent_type
+
         headers = {"Content-Type": "application/json"}
-        data = {"model": model, "input": text}
+        data = {"model": self.model_name, "input": text}
         response = requests.post(api_url, json=data, headers=headers)
         response
         return response.json()
+
+    # https: // blog.csdn.net / coding2008 / article / details / 152780143
+    def data_processor(self, file_path, agent_type='api/embed'):
+        api_url = self.base_url + agent_type
+        document = PyPDFLoader(file_path).load()
+        print(f'载入后的变量类型为：{type(document)},', f"该PDF一共包含{len(document)}页")
+        # 知识库中单段文本长度
+        chunk_size = 500
+        # 知识库中相似文本重合长度
+        overlap_size = 50
+        # 声明一个RecursiveCharacterTextSplitter实例
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap_size)
+        split_docs = text_splitter.split_documents(document)
+
+        persist_directory = "../../data_base/vector_db/chroma"
+        vectordb = Chroma.from_documents(documents=split_docs[:100], embedding=embedding, persist_directory=persist_directory)
+        vectordb.persist() # 持久化向量数据库
+
+        # print(split_docs)
+        print(f"分割后的块数：{len(split_docs)}")
+        print(f"分割后的字符数（可以用来大致评估token数）：{sum([len(doc.page_content) for doc in split_docs])}")
+        response = requests.post(api_url, json=data, headers=headers)
+        # 定义Embeddings
+        embedding = HuggingFaceEmbeddings(model_name="moka-ai/m3e-base")
+        query1 = '机器学习'
+        query2 = '强化学习'
+        emb1 = embedding.embed_query(query1)
+        emb2 = embedding.embed_query(query2)
+        print(emb1)
+        print(emb2)
+        # 计算两个词向量的相关性
+        emb1 = np.array(emb1)
+        emb2 = np.array(emb2)
+        print(f"{query1}和{query2}向量之间的点积为：{np.dot(emb1, emb2)}")
+
+
+
 
 
 

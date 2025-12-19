@@ -5,20 +5,22 @@ import json
 from conductive_edu.config import Config
 
 
+
 class Rag(object):
     def __init__(self, agent_type="user", device=None, logger=None, monitor=None):
         # 定义想要调用的函数（默认DeepSeek）
         self.model = Config.DEEPSEEK_R1_MODEL
         # self.model = Config.DEEPSEEK_R1_1B
-        self.api_url = Config.BASE_URL
+        self.api_url = 'http://127.0.0.1:11434/'
     def embed_llama_index(self, question, agent_type='generate'):
         llm = Ollama(model=self.model, base_url=self.api_url, request_timeout=60)
 
         response = llm.complete(question)
-        for line in response.iter_lines():
-            if line:
-                json_data = json.loads(line.decode("utf-8"))
-                print(json_data.get("response", ""), end="", flush=True)
+        print(response)
+        # for line in response.iter_lines():
+        #     if line:
+        #         json_data = json.loads(line.decode("utf-8"))
+        #         print(json_data.get("response", ""), end="", flush=True)
 
 
 if __name__ == "__main__":
