@@ -36,9 +36,27 @@ def embed_completion():
     print("生成文本嵌入", embedding)
 
 
+def generate(question):
+    response = agent_executor.invoke({"question": question})
+    return response.get("output")
+
+import gradio as gr
+with gr.Blocks() as demo:
+    gr.Markdown("# Gradio Demo UI 🖍️")
+    input_text = gr.Text(label="Your Input")
+    btn = gr.Button("Submit")
+    result = gr.Textbox(label="Generated Result")
+
+    btn.click(fn=generate, inputs=[input_text], outputs=[result])
+
+gr.close_all()
+demo.launch()
+
 if __name__ == "__main__":
     agent = Agent()
     file_path = "G:\PycharmProjects\education_llm\conductive_edu\data\knowledge.pdf"
-    agent.data_processor(file_path)
+    agent.embed_api(file_path)
     # chat_completion()
     # embed_completion()
+
+

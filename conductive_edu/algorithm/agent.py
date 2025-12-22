@@ -104,6 +104,49 @@ class Agent(object):
         response
         return response.json()
 
+    def embed_api(self, file_path, agent_type='api/embed'):
+        document = PyPDFLoader(file_path).load()
+        print(f'载入后的变量类型为：{type(document)},', f"该PDF一共包含{len(document)}页")
+        # 知识库中单段文本长度
+        chunk_size = 500
+        # 知识库中相似文本重合长度
+        overlap_size = 50
+        # 声明一个RecursiveCharacterTextSplitter实例
+        text_splitter = RecursiveCharacterTextSplitter(chunk_size=chunk_size, chunk_overlap=overlap_size)
+        split_docs = text_splitter.split_documents(document)
+        # 定义Embeddings
+        embedding = HuggingFaceEmbeddings(model_name="moka-ai/m3e-base")
+
+        persist_directory = "../../data_base/vector_db/chroma"
+        persist_directory = "G:\PycharmProjects\education_llm\conductive_edu\data_base"
+        vectordb = Chroma.from_documents(documents=split_docs[:100], embedding=embedding, persist_directory=persist_directory)
+        vectordb.persist()  # 持久化向量数据库
+
+        question = "什么是机器学习？"
+        sim_docs = vectordb.similarity_search(question, k=3)
+        print(f"检索到的内容数：{len(sim_docs)}")
+        for i, sim_doc in enumerate(sim_docs):
+            print(f"检索到第{i}个内容：\n{sim_doc.page_content[:200]}", end="\n----------\n")
+
+        #
+        # # print(split_docs)
+        # print(f"分割后的块数：{len(split_docs)}")
+        # print(f"分割后的字符数（可以用来大致评估token数）：{sum([len(doc.page_content) for doc in split_docs])}")
+        # response = requests.post(api_url, json=data, headers=headers)
+
+
+
+        query1 = '机器学习'
+        query2 = '强化学习'
+        emb1 = embedding.embed_query(query1)
+        emb2 = embedding.embed_query(query2)
+        print(emb1)
+        print(emb2)
+        # 计算两个词向量的相关性
+        emb1 = np.array(emb1)
+        emb2 = np.array(emb2)
+        print(f"{query1}和{query2}向量之间的点积为：{np.dot(emb1, emb2)}")
+
     # https: // blog.csdn.net / coding2008 / article / details / 152780143
     def data_processor(self, file_path, agent_type='api/embed'):
         api_url = self.base_url + agent_type
