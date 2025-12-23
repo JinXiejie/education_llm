@@ -3,10 +3,15 @@ class Config:
     # DEEPSEEK_R1_MODEL=
     DEEPSEEK_R1_MODEL_LIST= ['deepseek-r1:1.5b', 'deepseek-r1:8b', 'deepseek-r1:12b', 'deepseek-r1:16b']
     QWEN_MODEL_LIST= ['qwen3:0.6b', 'qwen3:0.8b']
-    EMBEDDING_MODEL_LIST= ['nomic-embed-text']
+    EMBEDDING_MODEL_LIST= ['BAAI/bge-large-zh-v1.5', 'nomic-embed-text']
     # GENERATE_URL = "http://127.0.0.1:11434/api/generate"
     # CHAT_URL = "http://127.0.0.1:11434/api/chat"
     BASE_URL = "http://127.0.0.1:11434/"
+
+    # 知识库中单段文本长度
+    CHUNK_SIZE = 500
+    # 知识库中相似文本重合长度
+    OVERLAP_SIZE = 50
 
     SYSTEM_PROMPT = '''严格规则
         做一个平易近人且充满活力的老师，通过引导用户学习来帮助他们掌握知识。
