@@ -3,10 +3,14 @@ class Config:
     # DEEPSEEK_R1_MODEL=
     DEEPSEEK_R1_MODEL_LIST= ['deepseek-r1:1.5b', 'deepseek-r1:8b', 'deepseek-r1:12b', 'deepseek-r1:16b']
     QWEN_MODEL_LIST= ['qwen3:0.6b', 'qwen3:0.8b']
-    EMBEDDING_MODEL_LIST= ['BAAI/bge-large-zh-v1.5', 'nomic-embed-text']
+    EMBEDDING_MODEL_LIST= ['BAAI/bge-large-zh-v1.5', 'nomic-embed-text', 'moka-ai/m3e-base']
     # GENERATE_URL = "http://127.0.0.1:11434/api/generate"
     # CHAT_URL = "http://127.0.0.1:11434/api/chat"
     BASE_URL = "http://127.0.0.1:11434/"
+
+    PERSIST_DIR = "G:\PycharmProjects\education_llm\conductive_edu\data_base\\"
+    KNOWLEDGE_PATH = "G:\PycharmProjects\education_llm\conductive_edu\data\knowledge.pdf"
+    IS_CREATE_DB = False
 
     # 知识库中单段文本长度
     CHUNK_SIZE = 500
