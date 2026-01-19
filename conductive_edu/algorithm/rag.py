@@ -15,10 +15,10 @@ from langchain_community.llms import Ollama
 class Rag(object):
     def __init__(self, knowledge_path="user", device=None, logger=None, monitor=None):
         # 定义想要调用的函数（默认DeepSeek）
-        self.llm_model_name = Config.DEEPSEEK_R1_MODEL_LIST[1]
+        self.llm_model_name = Config.LLM_MODEL_NAME[1]
         self.base_url = Config.BASE_URL
 
-        self.embed_model_name = Config.EMBEDDING_MODEL_LIST[0]
+        self.embed_model_name = Config.EMBEDDING_MODEL_NAME[0]
         # 使用cpu
         self.model_kwargs = {'device': 'cpu', 'trust_remote_code': True}
         self.encode_kwargs = {'normalize_embeddings': False}

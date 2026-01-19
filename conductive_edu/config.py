@@ -1,11 +1,21 @@
 
 class Config:
-    # DEEPSEEK_R1_MODEL=
-    DEEPSEEK_R1_MODEL_LIST= ['deepseek-r1:1.5b', 'deepseek-r1:8b', 'deepseek-r1:12b', 'deepseek-r1:16b']
-    QWEN_MODEL_LIST= ['qwen3:0.6b', 'qwen3:0.8b']
-    EMBEDDING_MODEL_LIST= ['BAAI/bge-large-zh-v1.5', 'nomic-embed-text', 'moka-ai/m3e-base']
-    # GENERATE_URL = "http://127.0.0.1:11434/api/generate"
-    # CHAT_URL = "http://127.0.0.1:11434/api/chat"
+    """
+    deepseek model list: ['deepseek-r1:1.5b', 'deepseek-r1:8b', 'deepseek-r1:12b', 'deepseek-r1:16b']
+    qwen model list: ['qwen3:0.6b', 'qwen3:0.8b']
+    """
+    LLM_MODEL_NAME= 'deepseek-r1:8b'
+
+    """
+        embedding model list: ['BAAI/bge-large-zh-v1.5', 'nomic-embed-text', 'moka-ai/m3e-base']
+    """
+    EMBEDDING_MODEL_NAME= 'BAAI/bge-large-zh-v1.5'
+
+    """
+        generate url: "http://127.0.0.1:11434/api/generate"
+        chat url: "http://127.0.0.1:11434/api/chat"
+        embedding url: "http://127.0.0.1:11434/api/embed"
+    """
     BASE_URL = "http://127.0.0.1:11434/"
 
     PERSIST_DIR = "G:\PycharmProjects\education_llm\conductive_edu\data_base\\"
