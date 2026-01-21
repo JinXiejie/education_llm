@@ -6,6 +6,34 @@ from typing import Generator, List, Dict, Any
 
 from conductive_edu.config import Config
 
+
+def get_available_models() -> List[str]:
+    """获取可用的模型列表"""
+    try:
+        models = ollama.list()
+        print("可用的模型列表" + models)
+        return [model['model'] for model in models['models']]
+    except:
+        return ["llama2", "mistral", "codellama"]  # 默认模型
+
+def format_history_for_ollama(gradio_history: List, messages) -> List[Dict[str, str]]:
+    """
+    将 Gradio 的历史记录格式转换为 Ollama 格式
+    """
+    if gradio_history and isinstance(gradio_history, list):
+        for turn in gradio_history:
+            if isinstance(turn, (list, tuple)) and len(turn) >= 2:
+                user_msg = str(turn[0]).strip()
+                assistant_msg = str(turn[1]).strip()
+                # 处理用户消息
+                if user_msg:
+                    messages.append({"role": "user", "content": user_msg})
+
+                # 处理助手消息
+                if assistant_msg:
+                    messages.append({"role": "assistant", "content": assistant_msg})
+    return messages
+
 class OllamaStreamingChat:
     """Ollama 流式聊天类"""
 
@@ -14,23 +42,7 @@ class OllamaStreamingChat:
         self.system_prompt = Config.SYSTEM_PROMPT
         self.history = []
 
-    def format_history_for_ollama(self, gradio_history: List, messages) -> List[Dict[str, str]]:
-        """
-        将 Gradio 的历史记录格式转换为 Ollama 格式
-        """
-        if gradio_history and isinstance(gradio_history, list):
-            for turn in gradio_history:
-                if isinstance(turn, (list, tuple)) and len(turn) >= 2:
-                    user_msg = str(turn[0]).strip()
-                    assistant_msg = str(turn[1]).strip()
-                    # 处理用户消息
-                    if user_msg:
-                        messages.append({"role": "user", "content": user_msg})
 
-                    # 处理助手消息
-                    if assistant_msg:
-                        messages.append({"role": "assistant", "content": assistant_msg})
-        return messages
 
     def stream_response(self, message: str, history: List, model: str = None) -> Generator[str, None, None]:
         """
@@ -42,7 +54,7 @@ class OllamaStreamingChat:
         # 添加系统提示
         # 转换历史记录格式
         system_messages = [{"role": "system", "content": self.system_prompt}]
-        ollama_messages = self.format_history_for_ollama(history, system_messages)
+        ollama_messages = format_history_for_ollama(history, system_messages)
 
         # 添加当前用户消息
         current_msg = str(message).strip()

@@ -3,18 +3,14 @@ import gradio as gr
 import ollama
 from typing import Generator, List, Dict, Optional, Any
 import os, requests, hashlib, json
-from datetime import datetime
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_community.document_loaders import (
-    TextLoader,
-    PyPDFLoader,
-    Docx2txtLoader,
-    UnstructuredMarkdownLoader,
-    CSVLoader
-)
+
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
+from conductive_edu.backend_serve.ollama_streaming import get_available_models, format_history_for_ollama
+from conductive_edu.backend_serve.utils.doc_processor import DocumentProcessor
+from conductive_edu.backend_serve.utils.db_processor import DBProcessor
 from conductive_edu.config import Config
 
 
@@ -42,219 +38,24 @@ class LocalRAGSystem:
         self.chunk_size = chunk_size
         self.chunk_overlap = chunk_overlap
 
-        # 初始化嵌入模型
-        print(f"加载嵌入模型: {embedding_model}")
-        self.embeddings = HuggingFaceEmbeddings(
-            model_name=embedding_model,
-            model_kwargs={'device': 'cpu'},
-            encode_kwargs={'normalize_embeddings': True}
-        )
 
-        # 初始化文本分割器
-        self.text_splitter = RecursiveCharacterTextSplitter(
-            chunk_size=chunk_size,
-            chunk_overlap=chunk_overlap,
-            length_function=len,
-            separators=["\n\n", "\n", "。", "；", "，", " ", ""]
-        )
 
-        # 初始化向量数据库
-        self.vectorstore = None
-        self.collection_name = "rag_documents"
+        # 初始化文件处理器
+        self.doc_processor = DocumentProcessor()
 
         # 初始化 Ollama 模型
-        self.llm_model = "deepseek-r1:8b"
+        # self.llm_model = "deepseek-r1:8b"
+        self.llm_model = "deepseek-r1:1.5b"
 
         # 创建存储目录
         os.makedirs(persist_directory, exist_ok=True)
         # os.makedirs("./uploaded_docs", exist_ok=True)
 
         # 加载现有的向量数据库
-        self._load_vectorstore()
+        self.db_processor = DBProcessor()
+        # self._load_vectorstore()
 
-    def _load_vectorstore(self):
-        """加载向量数据库"""
-        try:
-            if os.path.exists(self.persist_directory) and os.listdir(self.persist_directory):
-                print("加载现有的向量数据库...")
-                self.vectorstore = Chroma(
-                    persist_directory=self.persist_directory,
-                    embedding_function=self.embeddings,
-                    collection_name=self.collection_name
-                )
-                print(f"向量数据库加载成功，包含 {self.vectorstore._collection.count()} 个文档")
-            else:
-                print("创建新的向量数据库...")
-                self.vectorstore = Chroma(
-                    # documents=
-                    persist_directory=self.persist_directory,
-                    embedding_function=self.embeddings,
-                    collection_name=self.collection_name
-                )
-        except Exception as e:
-            print(f"加载向量数据库失败: {e}")
-            self.vectorstore = Chroma.from_documents(
-                persist_directory=self.persist_directory,
-                embedding_function=self.embeddings,
-                collection_name=self.collection_name
-            )
 
-    def _get_file_loader(self, file_path: str):
-        """根据文件类型获取相应的加载器"""
-        ext = os.path.splitext(file_path)[1].lower()
-
-        loaders = {
-            '.txt': TextLoader,
-            '.pdf': PyPDFLoader,
-            '.docx': Docx2txtLoader,
-            '.md': UnstructuredMarkdownLoader,
-            '.csv': CSVLoader
-        }
-
-        if ext in loaders:
-            return loaders[ext](file_path)
-        else:
-            raise ValueError(f"不支持的文件类型: {ext}")
-
-    def process_document(self, file_path: str, metadata: Optional[Dict] = None) -> List[Dict]:
-        """
-        处理单个文档
-
-        Args:
-            file_path: 文档路径
-            metadata: 文档元数据
-
-        Returns:
-            处理后的文档块列表
-        """
-        print(f"处理文档: {file_path}")
-
-        try:
-            # 加载文档
-            loader = self._get_file_loader(file_path)
-            documents = loader.load()
-
-            # 添加元数据
-            if metadata:
-                for doc in documents:
-                    doc.metadata.update(metadata)
-
-            # 文本分割
-            texts = self.text_splitter.split_documents(documents)
-
-            print(f"文档分割为 {len(texts)} 个块")
-            return texts
-
-        except Exception as e:
-            print(f"处理文档失败: {e}")
-            raise
-
-    def add_local_documents(self, file_paths: List[str], metadata: Optional[Dict] = None) -> bool:
-        """
-        添加文档到向量数据库
-
-        Args:
-            file_paths: 文档路径列表
-            metadata: 文档元数据
-
-        Returns:
-            是否成功
-        """
-        try:
-            all_texts = []
-
-            for file_path in file_paths:
-                if not os.path.exists(file_path):
-                    print(f"文件不存在: {file_path}")
-                    continue
-
-                # 生成文档ID
-                file_hash = hashlib.md5(file_path.encode()).hexdigest()[:8]
-
-                doc_metadata = {
-                    "source": os.path.basename(file_path),
-                    "file_path": file_path,
-                    "file_type": os.path.splitext(file_path)[1],
-                    "file_size": os.path.getsize(file_path),
-                    "hash": file_hash,
-                    "upload_time": datetime.now().isoformat()
-                }
-
-                if metadata:
-                    doc_metadata.update(metadata)
-
-                # 处理文档
-                texts = self.process_document(file_path, doc_metadata)
-                all_texts.extend(texts)
-
-            if all_texts:
-                # 添加到向量数据库
-                self.vectorstore.add_documents(all_texts)
-                # self.vectorstore.persist()
-
-                print(f"成功添加 {len(all_texts)} 个文档块到向量数据库")
-                return True
-            else:
-                print("没有有效的文档可以添加")
-                return False
-
-        except Exception as e:
-            print(f"添加文档失败: {e}")
-            return False
-
-    def search_documents(self, query: str, k: int = 4) -> List[Dict]:
-        """
-        搜索相关文档
-
-        Args:
-            query: 查询文本
-            k: 返回的文档数量
-
-        Returns:
-            相关文档列表
-        """
-        if not self.vectorstore:
-            print("向量数据库未初始化")
-            return []
-
-        try:
-            # 相似度搜索
-            docs = self.vectorstore.similarity_search_with_score(query, k=k)
-
-            results = []
-            for doc, score in docs:
-                result = {
-                    "content": doc.page_content,
-                    "metadata": doc.metadata,
-                    "score": float(score),
-                    "source": doc.metadata.get("source", "unknown")
-                }
-                results.append(result)
-
-            print(f"搜索到 {len(results)} 个相关文档")
-            return results
-
-        except Exception as e:
-            print(f"搜索文档失败: {e}")
-            return []
-
-    def format_history_for_ollama(self, gradio_history: List, messages) -> List[Dict[str, str]]:
-        """
-        将 Gradio 的历史记录格式转换为 Ollama 格式
-        """
-        if gradio_history and isinstance(gradio_history, list):
-            for turn in gradio_history:
-                if isinstance(turn, (list, tuple)) and len(turn) >= 2:
-                    user_msg = str(turn[0]).strip()
-                    assistant_msg = str(turn[1]).strip()
-                    # 处理用户消息
-                    if user_msg:
-                        messages.append({"role": "user", "content": user_msg})
-
-                    # 处理助手消息
-                    if assistant_msg:
-                        messages.append({"role": "assistant", "content": assistant_msg})
-        return messages
 
     def generate_answer(self,
                         message: str,
@@ -297,7 +98,7 @@ class LocalRAGSystem:
         # 添加系统提示
         # 转换历史记录格式
         system_messages = [{"role": "system", "content": self.system_prompt}]
-        ollama_messages = self.format_history_for_ollama(history, system_messages)
+        ollama_messages = format_history_for_ollama(history, system_messages)
 
         # 添加当前用户消息
         message = str(message).strip()
@@ -380,7 +181,7 @@ class LocalRAGSystem:
         print(f"{'=' * 60}")
 
         # 1. 检索相关文档
-        context_docs = self.search_documents(query, k=k)
+        context_docs = self.doc_processor.search_documents(query, k=k)
 
         # if not context_docs:
         #     return {
@@ -459,33 +260,6 @@ class LocalRAGSystem:
         #     "sources": sources
         # }
 
-    def get_document_stats(self) -> Dict:
-        """获取文档统计信息"""
-        if not self.vectorstore:
-            return {"total_documents": 0}
-
-        try:
-            count = self.vectorstore._collection.count()
-            return {"total_documents": count}
-        except:
-            return {"total_documents": 0}
-
-    def clear_database(self) -> bool:
-        """清空向量数据库"""
-        try:
-            if self.vectorstore:
-                self.vectorstore.delete_collection()
-                self.vectorstore = None
-
-            # 重新创建
-            self._load_vectorstore()
-            print("向量数据库已清空")
-            return True
-
-        except Exception as e:
-            print(f"清空数据库失败: {e}")
-            return False
-
 
 
 class RAGGradioInterface:
@@ -502,18 +276,33 @@ class RAGGradioInterface:
         )
         self.rag_system = rag_system
         self.current_model = rag_system.llm_model
+        self.available_models = get_available_models()
+        self.default_model = "deepseek-r1:1.5b"
+        self.llm_model = self.get_llm_model(Config.LLM_MODEL_NAME)
+        # 初始化文件处理器
+        self.doc_processor = DocumentProcessor()
+        self.db_processor = DBProcessor()
 
-    def get_available_models(self) -> List[str]:
-        """获取可用模型列表"""
-        try:
-            response = requests.get("http://localhost:11434/api/tags", timeout=5)
-            if response.status_code == 200:
-                data = response.json()
-                models = data.get('models', [])
-                return [model['model'] for model in models]
-        except Exception as e:
-            print(f"获取模型列表失败: {e}")
-        return ["deepseek-r1:8b"]
+    def get_llm_model(self, llm_model_name):
+        for model in self.available_models:
+            if model == llm_model_name:
+                print('初始化教育大模型：' + model )
+                return model
+            else:
+                print('未找到教育大模型：' + model)
+                print('采用默认模型：' + self.default_model)
+                return self.default_model
+    # def get_available_models(self) -> List[str]:
+    #     """获取可用模型列表"""
+    #     try:
+    #         response = requests.get("http://localhost:11434/api/tags", timeout=5)
+    #         if response.status_code == 200:
+    #             data = response.json()
+    #             models = data.get('models', [])
+    #             return [model['model'] for model in models]
+    #     except Exception as e:
+    #         print(f"获取模型列表失败: {e}")
+    #     return ["deepseek-r1:8b"]
 
     def create_interface(self):
         """创建 Gradio 界面"""
@@ -575,10 +364,10 @@ class RAGGradioInterface:
                         stats_output = gr.JSON(label="文档统计", value={})
 
                     # 模型选择
-                    available_models = self.get_available_models()
+
                     model_dropdown = gr.Dropdown(
-                        choices=available_models,
-                        value=available_models[3] if available_models else "deepseek-r1:8b",
+                        choices=self.available_models,
+                        value=self.llm_model,
                         label="选择 AI 模型"
                     )
 
@@ -671,10 +460,10 @@ class RAGGradioInterface:
                         file_paths.append(save_path)
 
                     # 添加到向量数据库
-                    success = self.rag_system.add_local_documents(file_paths)
+                    success = self.doc_processor.add_local_documents(file_paths)
 
                     if success:
-                        stats = self.rag_system.get_document_stats()
+                        stats = self.doc_processor.get_document_stats()
                         return f"✅ 成功处理 {len(files)} 个文档", stats
                     else:
                         return "❌ 处理文档失败", {}
@@ -684,12 +473,12 @@ class RAGGradioInterface:
 
             def get_stats():
                 """获取文档统计"""
-                stats = self.rag_system.get_document_stats()
+                stats = self.doc_processor.get_document_stats()
                 return stats
 
             def clear_database():
                 """清空数据库"""
-                success = self.rag_system.clear_database()
+                success = self.db_processor.clear_database()
                 if success:
                     return "✅ 数据库已清空", {}
                 else:
@@ -701,7 +490,7 @@ class RAGGradioInterface:
                     yield "请输入问题", "答案将在这里显示...", []
                     return
 
-                if not self.rag_system.get_document_stats()["total_documents"]:
+                if not self.doc_processor.get_document_stats()["total_documents"]:
                     yield "❌ 请先上传文档", "数据库中没有文档，请先上传文档。", []
                     return
 
@@ -843,8 +632,9 @@ class OllamaDocumentQA:
             with gr.Row():
                 with gr.Column(scale=1):
                     model_dropdown = gr.Dropdown(
-                        choices=["llama2", "mistral", "codellama"],
-                        value="llama2",
+                        # choices=["llama2", "mistral", "codellama"],
+                        choices=get_available_models(),
+                        value="deepseek-r1:1.5b",
                         label="选择模型"
                     )
 
