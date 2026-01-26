@@ -1,5 +1,5 @@
 
-from conductive_edu.backend_serve.ollama_streaming import OllamaStreamingChat, get_available_models
+from conductive_edu.backend_serve.ollama_streaming import OllamaStreamingChat
 import gradio as gr
 import ollama
 from typing import Generator, List, Dict, Any
@@ -11,7 +11,15 @@ class GradioStreamingUI:
 
     def __init__(self):
         self.chatbot = OllamaStreamingChat()
-        self.available_models = get_available_models()
+        self.available_models = self.get_available_models()
+
+    def get_available_models(self) -> List[str]:
+        """获取可用的模型列表"""
+        try:
+            models = ollama.list()
+            return [model['model'] for model in models['models']]
+        except:
+            return ["llama2", "mistral", "codellama"]  # 默认模型
 
     def respond(self, message: str, history: List, model: str, temperature: float, max_tokens: int,
                 system_prompt: str) -> Generator[List, None, None]:
@@ -101,7 +109,7 @@ class GradioStreamingUI:
                 with gr.Column(scale=1):
                     model_dropdown = gr.Dropdown(
                         choices=self.available_models,
-                        value=self.available_models[0] if self.available_models else "llama2",
+                        value=self.available_models[3] if self.available_models else "llama2",
                         label="选择模型",
                         interactive=True
                     )

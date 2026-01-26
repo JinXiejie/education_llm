@@ -20,18 +20,31 @@ def format_history_for_ollama(gradio_history: List, messages) -> List[Dict[str, 
     """
     将 Gradio 的历史记录格式转换为 Ollama 格式
     """
+    print(f"gradio_history 的消息: {json.dumps(gradio_history, indent=2, ensure_ascii=False)}")
     if gradio_history and isinstance(gradio_history, list):
+        print('-' * 8 + '进入循环：isinstance(gradio_history, list)' + '-' * 8)
+        print(f"gradio_history 的消息: {json.dumps(gradio_history, indent=2, ensure_ascii=False)}")
         for turn in gradio_history:
-            if isinstance(turn, (list, tuple)) and len(turn) >= 2:
-                user_msg = str(turn[0]).strip()
-                assistant_msg = str(turn[1]).strip()
-                # 处理用户消息
-                if user_msg:
-                    messages.append({"role": "user", "content": user_msg})
-
-                # 处理助手消息
-                if assistant_msg:
-                    messages.append({"role": "assistant", "content": assistant_msg})
+            # print('-' * 8 + '进入循环：gradio_history' + '-' * 8)
+            # print(f"turn 的消息: {json.dumps(turn, indent=2, ensure_ascii=False)}")
+            # print('turn[role]:' + turn['role'])
+            role = turn['role']
+            content = turn['content']
+            if content and isinstance(content, list) and content[0]['text'] and isinstance(content[0]['text'], str):
+                text = content[0]['text']
+                # print('turn[content]:' + str(content))
+                # print('turn[content][text]:' + str(content[0]['text']))
+                messages.append({"role": role, "content": text})
+            # if isinstance(turn, (list, tuple)) and len(turn) >= 2:
+            #     user_msg = str(turn[0]).strip()
+            #     assistant_msg = str(turn[1]).strip()
+            #     # 处理用户消息
+            #     if user_msg:
+            #         messages.append({"role": "user", "content": user_msg})
+            #
+            #     # 处理助手消息
+            #     if assistant_msg:
+            #         messages.append({"role": "assistant", "content": assistant_msg})
     return messages
 
 class OllamaStreamingChat:

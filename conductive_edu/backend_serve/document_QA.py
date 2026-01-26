@@ -8,10 +8,11 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_chroma import Chroma
 
-from conductive_edu.backend_serve.ollama_streaming import get_available_models, format_history_for_ollama
+from conductive_edu.backend_serve.ollama_streaming import format_history_for_ollama
 from conductive_edu.backend_serve.utils.doc_processor import DocumentProcessor
 from conductive_edu.backend_serve.utils.db_processor import DBProcessor
 from conductive_edu.config import Config
+from conductive_edu.frontend_controller.gradio_streaming_ui import GradioStreamingUI
 
 
 class LocalRAGSystem:
@@ -44,8 +45,8 @@ class LocalRAGSystem:
         self.doc_processor = DocumentProcessor()
 
         # 初始化 Ollama 模型
-        # self.llm_model = "deepseek-r1:8b"
-        self.llm_model = "deepseek-r1:1.5b"
+        self.llm_model = "deepseek-r1:8b"
+        # self.llm_model = "deepseek-r1:1.5b"
 
         # 创建存储目录
         os.makedirs(persist_directory, exist_ok=True)
@@ -276,22 +277,31 @@ class RAGGradioInterface:
         )
         self.rag_system = rag_system
         self.current_model = rag_system.llm_model
-        self.available_models = get_available_models()
-        self.default_model = "deepseek-r1:1.5b"
+        self.available_models = self.get_available_models()
+        print("可用的模型列表:" + str(self.available_models))
+        self.default_model = "deepseek-r1:8b"
         self.llm_model = self.get_llm_model(Config.LLM_MODEL_NAME)
         # 初始化文件处理器
         self.doc_processor = DocumentProcessor()
         self.db_processor = DBProcessor()
 
+    def get_available_models(self) -> List[str]:
+        """获取可用的模型列表"""
+        try:
+            models = ollama.list()
+            return [model['model'] for model in models['models']]
+        except:
+            print("未获取有效模型列表")
+            return ["llama2", "mistral", "codellama"]  # 默认模型
+
     def get_llm_model(self, llm_model_name):
+        print('-'*8 + '初始化教育大模型：' + '-'*8)
         for model in self.available_models:
             if model == llm_model_name:
-                print('初始化教育大模型：' + model )
                 return model
-            else:
-                print('未找到教育大模型：' + model)
-                print('采用默认模型：' + self.default_model)
-                return self.default_model
+        print('未找到教育大模型：')
+        print('采用默认模型：' + self.default_model)
+        return self.default_model
     # def get_available_models(self) -> List[str]:
     #     """获取可用模型列表"""
     #     try:
